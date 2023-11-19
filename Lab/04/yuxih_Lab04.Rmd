@@ -1,0 +1,104 @@
+---
+title: "yuxih_Lab04"
+author: "Yuxin He"
+date: "2023-11-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library(tidytext)
+library(1textdata)
+library(tidyverse)
+get_sentiments("afinn")
+```
+
+```{r}
+get_sentiments("nrc")
+```
+
+```{r}
+##lines <- readLines("Rosie.txt")
+##lines <- readLines("Rosie.txt", warn = FALSE)
+```
+
+
+```{r}
+# Set the folder path
+folder_path <- "D:/桌面/648/Lab4/Lab4prj/Lab4prj"
+
+# Get a list of all txt files in the folder
+file_list <- list.files(folder_path, pattern = "\\.txt$", full.names = TRUE)
+
+# Create an empty list to store the lines from each file
+lines_list <- list()
+
+# Use a loop to read each txt file and store each line as a separate observation
+for (file_path in file_list) {
+  # Read all lines from the txt file
+  lines <- readLines(file_path)
+  
+  # Append the lines to the list
+  lines_list <- c(lines_list, lines)
+}
+
+# Create a data frame with a single column for each line
+data <- data.frame(lines = unlist(lines_list))
+
+# Print or further process the resulting data frame
+print(data)
+```
+
+ 
+```{r} 
+library(stringr)
+## we need to make sure that the lyrics are characters
+lines <- as.character(lines)
+
+tidy_song <- lines_list %>%
+  group_by(track_title) %>%
+  ungroup() %>%
+  unnest_tokens(word,lyric)
+```
+
+```{r}
+tidy_song %>%
+  filter(track_title == "bad guy")%>%
+  inner_join(nrc_anger) %>%
+  count(word, sort = TRUE)
+``` 
+```{r}
+song_sentiment <- tidy_song %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(track_title, index = line, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+```
+```{r}
+ggplot(song_sentiment, aes(index, sentiment, fill = track_title)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~track_title)
+```
