@@ -29,11 +29,12 @@ plot(pressure)
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
+### Sentiment analysis
+I analyzed the album named The Search for Everything by John Mayer.
 ```{r}
 library(tidytext)
 library(textdata)
 library(tidyverse)
-get_sentiments("afinn")
 ```
 
 ```{r}
@@ -45,32 +46,162 @@ get_sentiments("nrc")
 ##lines <- readLines("Rosie.txt", warn = FALSE)
 ```
 
-
 ```{r}
-# Set the folder path
-folder_path <- "D:/桌面/648/Lab4/Lab4prj/Lab4prj"
-
-# Get a list of all txt files in the folder
-file_list <- list.files(folder_path, pattern = "\\.txt$", full.names = TRUE)
-
-# Create an empty list to store the lines from each file
-lines_list <- list()
-
-# Use a loop to read each txt file and store each line as a separate observation
-for (file_path in file_list) {
-  # Read all lines from the txt file
-  lines <- readLines(file_path)
-  
-  # Append the lines to the list
-  lines_list <- c(lines_list, lines)
-}
-
-# Create a data frame with a single column for each line
-data <- data.frame(lines = unlist(lines_list))
-
-# Print or further process the resulting data frame
-print(data)
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+nrc_anger
 ```
 
+
+```{r}
+txt_directory <- "D:/桌面/648/Repo/Lab/04/Lab4prj"
+file_paths <- list.files(txt_directory, pattern = "\\.txt$", full.names = TRUE)
+afinn = get_sentiments("afinn")##loading the afinn sentiment lexicon included in the tidytext package
+
+lyrics_list <- lapply(file_paths, function(file_path)##using the lapply function to apply a function to each text file in the directory
+  {
+  lines <- readLines(file_path, warn = FALSE)
+  song_title <- lines[1]
+  lyrics <- lines[-1]
+  tibble(song_title = song_title, lyrics = lyrics)
+})
+
+TheSearchForEverything<- bind_rows(lyrics_list)
+
+TheSearchForEverything <- TheSearchForEverything %>%
+  filter(lyrics != "" & !is.na(lyrics))
+
+TheSearchForEverything <- TheSearchForEverything %>%
+  mutate(line_id = row_number()) %>%
+  group_by(song_title) %>%
+  mutate(line_number = row_number()) %>%
+  ungroup()
+
+```
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+tidy_song <- TheSearchForEverything 
  
+
+# Print or further process the resulting tidy_song data frame
+print(tidy_song)
+
+```
+
+
+
+
+
+
+```{r} 
+library(stringr)
+tidy_song <- tidy_song %>%
+unnest_tokens(word,lyrics)
+```
+
+
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+song_sentiment <- tidy_song %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(song_title, index = line_number, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+```
+
+
+
+```{r}
+ggplot(song_sentiment, aes(index, sentiment, fill = song_title)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~song_title) +
+  ggtitle("Sentiment Analysis of The Search for Everything 1")
+``` 
+
+### Evaluating common positive and negative words
+```{r}
+nrc_word_counts <- tidy_song %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+```
+```{r}
+nrc_word_counts
+```
+
+```{r}
+nrc_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(6) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+### Word Clouds
+```{r}
+library(wordcloud)
+library(RColorBrewer)
+tidy_song %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+```
+```{r}
+library(tidyverse)
+library(tidytext)
+library(tm)
+library(wordcloud)
+
+library(magrittr)
+library(reshape2)
+library(tm)
+tidy_song %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+### Contextaulizing sentiment beyond just words
+```{r}
+library(sentimentr)
+song_sentiment_sent <- TheSearchForEverything %>%
+    get_sentences() %>%
+    sentiment_by(by = c('song_title', 'line_number'))%>%
+  as.data.frame()
+```
+
+```{r}
+ggplot(song_sentiment_sent, aes(line_number, ave_sentiment, fill = song_title)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~song_title) +
+  ggtitle("Sentiment Analysis of The Search for Everything 2")
+
+```
+
+### Answers:
+1.I used "nrc" to analyze the album sentiment.I analyzed the album named The Search for Everything by John Mayer. There are 10 kinds of emotions in this album. Two of them are negative and positive.
+
+According to the plot “Sentiment Analysis of the Search for Everything 1”, we can see there are not a lot negative or positive words in the songs “Moving on and Getting Over”, “Still Feel Like Your Man” and “Roll it on Home”. The lyrics in “Emoji of a Wave”, “In the Blood”, “Love on the Weekend”, “Rosie”, and “You’re Gonna Live Forever in Me” are more positive. And the sentiment of “Helpless” and “Never on the Day You Leave” is more negative.
+
+2.Analyzing language can be complex due to some personal feelings, opinions, and biases. For example, the tone can affect the sentiment of one sentence but it is hard be recognized sometimes.
+
+The plot “Sentiment Analysis of the Search for Everything 1”, analyzed sentiment at the word level, in the meantime the plot “Sentiment Analysis of the Search for Everything 1” analyzed on sentence-level sentiment. Comparing these two charts, we can see that both positive and negative emotions have become more frequent in the second chart. The repertoire is also more emotionally rich, which contributes to the accuracy of the analysis.
+
+
+
 
