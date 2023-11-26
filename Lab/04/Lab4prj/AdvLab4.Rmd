@@ -22,7 +22,7 @@ All three of these lexicons are based on unigrams, i.e., single English words th
 
 ```{r}
 library(tidytext)
-library(1textdata)
+library(textdata)
 library(tidyverse)
 get_sentiments("afinn")
 ```
