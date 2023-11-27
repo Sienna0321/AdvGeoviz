@@ -275,7 +275,7 @@ geomData = st_sfc(amenData$geometry)
 ```
 
 ### Tranforming some data to make it meaningful and interpretable
-##Geographic transformations
+## Geographic transformations
 ```{r}
 amenData$ZooEmpDist_log <- log(amenData$ZooDistEmp + 0.00000001)
 amenData$HotelEmpDist_log <- log(amenData$HotelDistE + 0.00000001)
@@ -289,7 +289,7 @@ amenData$SocialNorm <- amenData$Nat_Flickr/(amenData$serPop10 + 1)
 amenData$HousingChg <- amenData$Urb2011 - amenData$Urb2001
 ```
 
-##reduce to only the data that we need
+## reduce to only the data that we need
 
 ```{r}
 amenDataDF<-amenData[,c("SocialNorm", "HousingChg", "Frst2011", "WaterPct", "distcoast", "DEM_max","DEM_range", "HikeLength","ZooEmpDist_log", "HotelEmpDist_log","HistMonDist_log", "HighEdEmpDist_log", "GolfEmpDist_log")]
@@ -338,60 +338,16 @@ st_geometry(amenData) <- geomData
 ```{r}
 ggplot() + 
   geom_sf(data = amenData, mapping = aes(fill = as.factor(fit.cluster)), color = NA) + 
-  theme(legend.position = "none") +
+  ##theme(legend.position = "none") +
   ggtitle("Clusters based on Kmeans")
 ```
 
-### Hierarchical Clustering
-```{r}
-library(parallelDist)
-##d <- parDist(db_scaled, method = "euclidean")
-states <- st_read("states.shp")
-```
 
-```{r}
-##Let's make sure these data have the same projection
-states <- st_transform(states, st_crs(amenData))
-##test the same variables as above
+### Answers
+1. According to the estimate coefficient, the water distance contributes to urban development in Salt Lake the most. The bigger water distance is, the better Salt Lake develops. Besides, increasing the distance between roads or waters has a positive effect on the development of the Salt Lake. However, DEM has a negative impact on the development of the Salt Lake.
+  
+  Adding population density and education and healthcare       facilities can help Salt Lake City to develop. The number of people living in a certain area could be an important factor in urban development. It is important to control the population within the limits of what the environment can bear. Educational institutions serve as hubs for social interaction, fostering diversity, and understanding among residents. This contributes to social cohesion and community development. Higher quality of healthcare can make a city more appealing to residents.
 
-HCA <- amenData[,c("SocialNorm", "HousingChg", "Frst2011", "WaterPct", "distcoast", "DEM_max","DEM_range", "HikeLength","ZooEmpDist_log", "HotelEmpDist_log","HistMonDist_log", "HighEdEmpDist_log", "GolfEmpDist_log")]
-
-
-##Now we can join them together, but we only need the name of states 
-temp <- st_join(states[c("NAME", "geometry")], HCA)
-
-
-###Now we can filter to the state of interest
-Mich_scaled <- temp %>%
-  dplyr::filter(NAME == "Michigan") %>%
-  dplyr::select(SocialNorm, HousingChg, Frst2011, WaterPct, distcoast, DEM_max,DEM_range, HikeLength,ZooEmpDist_log, HotelEmpDist_log,HistMonDist_log, HighEdEmpDist_log, GolfEmpDist_log) %>%
-  st_drop_geometry() %>% 
-  scale()
-```
-
-```{r}
-library(parallelDist)
-d <- parDist(Mich_scaled, method = "euclidean")
-```
-
-```{r}
-hclust.model <- hclust(na.omit(d), "ward.D")
-## other option include "complete", "single", "average"
-hclust.model
-```
-
-```{r}
-hcd_ward <- as.dendrogram(hclust.model)
-plot(hcd_ward, ylab = "Height", leaflab = "none")
-```
-
-```{r}
-groups <- cutree(hclust.model, k=12) # cut tree into clusters
-###Calculate means of variables based on cluster categories
-means <- aggregate(Mich_scaled,by=list(groups),FUN=mean)
-means 
-```
-
-
+2. I used K-means clustering to Analyze the database of amenity landscape characteristics. I scaled the data within 5 models, according to the plot we got, the group 3 distribution occupies the largest area, the group 1 of distributions also occupies a larger area. The group 3 mainly locate in the east part of US, and the group 1 mainly locate in the west of US. Besides, the group 5 occupies a lot of area in west of US. Groups 2 and 4 both occupy a smaller area, with Group 2 mainly in the border areas of the US and Group 4 nearly evenly distributed across the US.
 
 
